@@ -37,5 +37,49 @@ The linked dataset has the following main charactertistics:
 All thos diseases are part of the rarest ones, less analyzed in other datasets.
 
 ---
+## Folders structure - - - work in progress
+
+In this section there is a visualization of how the folders are organized:
+
+```bash
+
+rare-neuro-mri-classification/
+├── README.md
+├── .gitignore
+├── requirements.txt
+│
+├── data/                            # (.gitignore)
+│   └── rare_neuro_mri_curated/      # download from Kaggle
+│
+├── notebooks/
+│   ├──
+│   └── 
+|
+│ summary.ipynb                        # summary notebook - to add
+│
+├── src/
+│   ├── __init__.py
+│   ├── data/
+│   │   ├── 
+│   │   └── 
+│   ├── models/
+│   │   ├── feature_extractor.py     # ResNet-50 + SVM
+│   │   └── transfer_learning.py     # ConvNeXt-Tiny
+│   ├── utils/
+│   │   ├── 
+│   │   └── 
+│   └── train.py                    
+│
+├── API_App/                         # api folder 
+│   ├── Dockerfile                    - to add
+│   ├── app/
+│   │   ├── main.py                  # FastAPI application
+│   │   └── 
+│   └── models/                      # copy of the best trained model
+│   
+└── 
+
+```
+---
 
 ## How to Run the Code
