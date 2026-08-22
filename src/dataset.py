@@ -53,9 +53,9 @@ class TorchIOMRITransform:
                     p=0.7
                 ),
                 tio.RandomElasticDeformation(  # Elastic deformations B-spline 2D
-                    num_control_points=(4, 4, 4),
-                    max_displacement=(5, 5, 0),
-                    p=0.3
+                    num_control_points=(5, 5, 5),   # Control points for the B-spline grid
+                    max_displacement=(5, 5, 0),     # Maximum displacement in pixels (no displacement in depth)
+                    p=0.3                           # Probability of applying the transformation
                 ),
 
                 # 2. Realistic MRI intensities and artifacts
@@ -150,7 +150,7 @@ def build_dataloaders(dataset_root, batch_size=64, img_size=224, aug_factor=2, s
 
 def visualize_augmentations(dataset, num_samples=6, seed=33):
     """
-    Show a side-by-side comparison between original and augmented images using TorchIO.
+    Show a side-by-side comparison between original and augmented images using TorchIO
     """
     set_seed(seed)
     fig, axes = plt.subplots(num_samples, 2, figsize=(8, 4 * num_samples))
