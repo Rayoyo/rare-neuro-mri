@@ -13,6 +13,15 @@ import torchvision.transforms as T
 import torchio as tio
 import matplotlib.pyplot as plt
 
+# Global default path (can be changed via set_dataset_root)
+DEFAULT_DATASET_ROOT = Path("./dataset")
+
+def set_dataset_root(new_path):
+    """Sets the global default directory for dataset root."""
+    global DEFAULT_DATASET_ROOT
+    DEFAULT_DATASET_ROOT = Path(new_path)
+    print(f"Global dataset root set to: {DEFAULT_DATASET_ROOT.resolve()}")
+
 # seed
 def set_seed(seed=33):
     """
@@ -88,10 +97,22 @@ class TorchIOMRITransform:
 
 class MRIDataset(Dataset):
     """Custom PyTorch dataset for 2D MRI images"""
-    def __init__(self, root_dir, split='train', transform=None, augmentation_factor=1):
-        self.root_dir = Path(root_dir) / split
+    def __init__(self, root_dir=None, split='train', transform=None, augmentation_factor=1):
+        self.split = split
         self.transform = transform
         self.augmentation_factor = augmentation_factor if split == 'train' else 1
+        
+        # Imposta la directory radice ed esegue lo scan del dataset
+        target_root = root_dir if root_dir is not None else DEFAULT_DATASET_ROOT
+        self.set_root_dir(target_root)
+
+    def set_root_dir(self, new_root_dir):
+        """
+        Allows dynamically setting or updating the dataset root directory from a notebook
+        and re-scans the directory structure.
+        """
+        self.base_root_dir = Path(new_root_dir)
+        self.root_dir = self.base_root_dir / self.split
         self.samples = []
         self.class_to_idx = {}
 
@@ -134,16 +155,17 @@ class MRIDataset(Dataset):
         return image, label, cls_name
 
 # Build data loaders for training, validation, and testing
-def build_dataloaders(dataset_root, batch_size=64, img_size=224, aug_factor=2, seed=33):
+def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor=2, seed=33):
     """Create datasets for Train, Val, and Test while applying the global seed"""
     set_seed(seed)
+    root = dataset_root if dataset_root is not None else DEFAULT_DATASET_ROOT
 
     train_transform = TorchIOMRITransform(img_size=img_size, is_train=True)
     val_test_transform = TorchIOMRITransform(img_size=img_size, is_train=False)
 
-    train_ds = MRIDataset(dataset_root, 'train', train_transform, augmentation_factor=aug_factor)
-    val_ds = MRIDataset(dataset_root, 'val', val_test_transform, augmentation_factor=1)
-    test_ds = MRIDataset(dataset_root, 'test', val_test_transform, augmentation_factor=1)
+    train_ds = MRIDataset(root, 'train', train_transform, augmentation_factor=aug_factor)
+    val_ds = MRIDataset(root, 'val', val_test_transform, augmentation_factor=1)
+    test_ds = MRIDataset(root, 'test', val_test_transform, augmentation_factor=1)
 
     return train_ds, val_ds, test_ds
 
