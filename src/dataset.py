@@ -53,7 +53,7 @@ class TorchIOMRITransform:
                     p=0.7
                 ),
                 tio.RandomElasticDeformation(  # Elastic deformations B-spline 2D
-                    num_control_points=(4, 4, 1),
+                    num_control_points=(4, 4, 4),
                     max_displacement=(5, 5, 0),
                     p=0.3
                 ),
