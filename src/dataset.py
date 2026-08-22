@@ -35,58 +35,60 @@ def set_seed(seed=33):
 
 # torchio transform
 class TorchIOMRITransform:
-    """Wrapper for applying 2D-constrained TorchIO transformations to MRI images"""
+    """
+    Wrapper for applying TorchIO transformations to 2D MRI images (PIL -> Tensor -> TorchIO 4D -> Tensor 3D)
+    """
     def __init__(self, img_size=224, is_train=True):
         self.img_size = img_size
         self.is_train = is_train
 
-        # Initial resizing
+        # Initial resizing (common to all images)
         self.resize = T.Resize((img_size, img_size))
 
-        # Standard ImageNet normalization
+        # Standard ImageNet normalization (required by ResNet and ConvNeXt)
         self.normalize = T.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
         )
 
-        # TorchIO Augmentation Pipeline (constrained to the 2D plane)
+        # TorchIO Augmentation Pipeline (active only during training)
         if self.is_train:
             self.augmentation = tio.Compose([
-                # 2D Spatial Transformations (Constrained to Z)
+                # 1. Spatial transformations -> no horizontal flips (dx and sx are not equivalent in brain MRI)
                 tio.RandomAffine(
-                    degrees=(0, 0, 15),                   # Rotation ONLY around the Z-axis (in-plane ±15°)
-                    translation=(10, 10, 0),              # Translation ONLY on X and Y (Z=0)
-                    scales=(0.9, 1.1, 0.9, 1.1, 1.0, 1.0),# Scaling 0.9x-1.1x on X and Y (Z=1.0)
+                    degrees=(0, 0, 15),                     # Rotation ONLY around the Z-axis (in-plane ±15°)
+                    translation=(10, 10, 0),                # Translation ONLY along X and Y (Z=0)
+                    scales=(0.9, 1.1, 0.9, 1.1, 1.0, 1.0),         # Scaling 0.9x-1.1x on X and Y (Z=1.0)
                     p=0.7
                 ),
-                tio.RandomElasticDeformation(             # B-spline deformation 2D
-                    num_control_points=(5, 5, 1),         # Exactly 1 control point on Z
-                    max_displacement=(5, 5, 0),           # Spostamento 0 su Z
-                    p=0.3
+                tio.RandomElasticDeformation(       # 2D B-spline deformation
+                    num_control_points=(5, 5, 5),   # Number of control points in each dimension (Z=5 for 2D)
+                    max_displacement=(5, 5, 0),     # Shift 0 on Z
+                    p=0.3                           # Probability of applying the transformation
                 ),
 
-                # 2. INTENSITÀ ED ARTEFATTI MRI
+                # 2. Realistic MRI intensities and artifacts
                 tio.RandomBiasField(coefficients=0.2, p=0.4),  # Field inhomogeneity
                 tio.RandomGamma(log_gamma=(-0.2, 0.2), p=0.4),  # Contrast variations
-                tio.RandomNoise(std=(0, 0.05), p=0.4),         # Light Gaussian noise
-                tio.RandomBlur(std=(0.3, 0.8), p=0.3)          # Micro-blur
+                tio.RandomNoise(std=(0, 0.05), p=0.4),         # Gaussian/Rician noise
+                tio.RandomBlur(std=(0.3, 0.8), p=0.3)          # Micro-blur / Artifacts
             ])
 
     def __call__(self, img_pil):
-        # Resize and conversion in Tensor [3, H, W]
+        # 1. Resize e conversione in Tensor [3, H, W]
         img = self.resize(img_pil)
         tensor = T.ToTensor()(img)
 
-        # Data Augmentation with TorchIO (sonly train)
+        # 2. Data Augmentation con TorchIO (solo in Train)
         if self.is_train:
-            # added one dimension Z=1 -> [C, H, W, 1]
+            # TorchIO requires 4D [C, H, W, D]. Let's add a dimension D=1
             tensor_4d = tensor.unsqueeze(-1)
             subject = tio.Subject(image=tio.ScalarImage(tensor=tensor_4d))
             
-            # apply transformations
+            # Apply transformations
             transformed = self.augmentation(subject)
             
-            # removed dimension Z=1 -> [C, H, W]
+            # Removes dimension D=1 -> Returns to [C, H, W]
             tensor = transformed['image'].data.squeeze(-1)
 
         # 3. Final Normalization
@@ -100,24 +102,31 @@ class MRIDataset(Dataset):
         self.transform = transform
         self.augmentation_factor = augmentation_factor if split == 'train' else 1
         
+        # Imposta la directory radice ed esegue lo scan del dataset
         target_root = root_dir if root_dir is not None else DEFAULT_DATASET_ROOT
         self.set_root_dir(target_root)
 
     def set_root_dir(self, new_root_dir):
-        """Sets or updates the dataset root directory and rescans files."""
+        """
+        Allows dynamically setting or updating the dataset root directory from a notebook
+        and re-scans the directory structure.
+        """
         self.base_root_dir = Path(new_root_dir)
         self.root_dir = self.base_root_dir / self.split
         self.samples = []
         self.class_to_idx = {}
 
+        # Check if the directory exists
         if not self.root_dir.exists():
-            raise FileNotFoundError(f"Directory non trovata: {self.root_dir}")
+            raise FileNotFoundError(f"Directory not found: {self.root_dir}")
 
+        # Build the dataset by scanning the directory structure
         classes = sorted([
             d for d in os.listdir(self.root_dir)
             if (self.root_dir / d).is_dir()
         ])
 
+        # Create a mapping from class names to indices and collect image paths
         for idx, cls in enumerate(classes):
             self.class_to_idx[cls] = idx
             cls_path = self.root_dir / cls
@@ -125,22 +134,27 @@ class MRIDataset(Dataset):
                 if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
                     self.samples.append((cls_path / fname, idx, cls))
 
+        # Multiply samples to increase epoch size during training
         if self.augmentation_factor > 1:
             self.samples = self.samples * self.augmentation_factor
 
+    # Get the number of samples in the dataset
     def __len__(self):
         return len(self.samples)
 
+    # Get a sample from the dataset
     def __getitem__(self, idx):
         img_path, label, cls_name = self.samples[idx]
         image = Image.open(img_path).convert('RGB')
         
+        # Apply transformations if provided
         if self.transform:
             image = self.transform(image)
             
+        # Return the image tensor, label, and class name
         return image, label, cls_name
 
-
+# Build data loaders for training, validation, and testing
 def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor=2, seed=33):
     """Create datasets for Train, Val, and Test while applying the global seed"""
     set_seed(seed)
@@ -149,40 +163,44 @@ def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor
     train_transform = TorchIOMRITransform(img_size=img_size, is_train=True)
     val_test_transform = TorchIOMRITransform(img_size=img_size, is_train=False)
 
-    train_ds = MRIDataset(root, 'train', train_transform, augmentation_factor=aug_factor)
-    val_ds = MRIDataset(root, 'val', val_test_transform, augmentation_factor=1)
-    test_ds = MRIDataset(root, 'test', val_test_transform, augmentation_factor=1)
+    train_ds = MRIDataset(dataset_root, 'train', train_transform, augmentation_factor=aug_factor)
+    val_ds = MRIDataset(dataset_root, 'val', val_test_transform, augmentation_factor=1)
+    test_ds = MRIDataset(dataset_root, 'test', val_test_transform, augmentation_factor=1)
 
     return train_ds, val_ds, test_ds
 
 
 def visualize_augmentations(dataset, num_samples=6, seed=33):
-    """Show a side-by-side comparison between original and augmented images"""
+    """
+    Show a side-by-side comparison between original and augmented images using TorchIO
+    """
     set_seed(seed)
     fig, axes = plt.subplots(num_samples, 2, figsize=(8, 4 * num_samples))
 
     for i in range(num_samples):
+        # Select a random index
         idx = random.randint(0, len(dataset) - 1)
         img_path, label, cls_name = dataset.samples[idx]
 
-        # 1. original img (PIL)
+        # 1. Original Image (PIL)
         raw_img = Image.open(img_path).convert('RGB').resize((dataset.transform.img_size, dataset.transform.img_size))
 
-        # 2. Augmented img (Tensor)
+        # 2. Augmented Image from PyTorch Dataset (Normalized Tensor)
         aug_tensor, _, _ = dataset[idx]
 
-        # Denormalization
+        # Denormalization for visualization with Matplotlib
         mean = np.array([0.485, 0.456, 0.406])
         std = np.array([0.229, 0.224, 0.225])
         aug_img = aug_tensor.permute(1, 2, 0).cpu().numpy()
         aug_img = std * aug_img + mean
         aug_img = np.clip(aug_img, 0, 1)
 
-        # Plot
+        # Plot Original Image
         axes[i, 0].imshow(raw_img)
         axes[i, 0].set_title(f"Original: {cls_name}")
         axes[i, 0].axis('off')
 
+        # Plot Augmented Image
         axes[i, 1].imshow(aug_img)
         axes[i, 1].set_title("TorchIO Augmented")
         axes[i, 1].axis('off')
