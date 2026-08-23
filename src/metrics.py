@@ -242,6 +242,6 @@ def evaluate_and_save_all(
         import torch
         torch.save(torch_model_to_save.state_dict(), model_dir / f"{model_name}_weights.pth")
 
-    print(f"\n Output salvati con successo:")
-    print(f"  - Grafici salvati in: {utils_dir}")
-    print(f"  - Artifacts e Pesi salvati in: {model_dir}")
+    print(f"\n Output saved:")
+    print(f"  - Graphs saved in: {utils_dir}")
+    print(f"  - Artifacts and Weights saved in: {model_dir}")
