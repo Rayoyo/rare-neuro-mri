@@ -44,39 +44,34 @@ In this section there is a visualization of how the folders are organized:
 ```bash
 
 rare-neuro-mri-classification/
-├── README.md
+├── README.md                             # this file with info about the project
 ├── .gitignore
 ├── requirements.txt
+├── summary.ipynb                         # summary notebook - to add
 │
-├── data/                            # (.gitignore)
-│   └── rare_neuro_mri_curated/      # download from Kaggle
+├── data/                                 # to create if you can run the code on your pc (.gitignore) -> must change paths
+│   └── rare_neuro_mri_curated/           # download from Kaggle (or by the code itself)
 │
 ├── notebooks/
-│   ├──
-│   └── 
+│   ├── 01_resnet50_svm.ipynb             # ResNet50 notebook
+│   └── 02_convnext-tiny_svm.ipynb        # ConvNext-Tiny notebook
 |
-│ summary.ipynb                        # summary notebook - to add
-│
 ├── src/
 │   ├── __init__.py
-│   ├── data/
-│   │   ├── 
+│   ├── dataset.py
+│   ├── feature_extractor.py              # ResNet-50 + SVM
+│   ├── metrics.py
+│   └── transfer_learning.py              # ConvNeXt-Tiny
+│                    
+├── API_App/              # api folder
+│   └── models/                           # copy of the best trained model
+│   │   ├──
+│   │   ├──
 │   │   └── 
-│   ├── models/
-│   │   ├── feature_extractor.py     # ResNet-50 + SVM
-│   │   └── transfer_learning.py     # ConvNeXt-Tiny
-│   ├── utils/
-│   │   ├── 
-│   │   └── 
-│   └── train.py                    
-│
-├── API_App/                         # api folder 
-│   ├── Dockerfile                    - to add
-│   ├── app/
-│   │   ├── main.py                  # FastAPI application
-│   │   └── 
-│   └── models/                      # copy of the best trained model
-│   
+│   ├── app.py                            # FastAPI application
+│   ├── docker-compose.yml               
+│   └── Dockerfile    
+|
 └── 
 
 ```
