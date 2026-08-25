@@ -74,9 +74,16 @@ def plot_per_class_metrics(y_true, y_pred, class_names, save_path=None, title="P
 
 
 def run_fewshot_analysis(X_train, y_train, X_test, y_test, class_names, full_acc, full_f1, 
-                         fewshot_sizes=[10, 25, 50, 100, 200], n_runs=5, seed=42):
+                         fewshot_sizes=[10, 25, 50, 100, 200], n_runs=5, C=1.0, seed=33):
     """Generate and save the few-shot robustness analysis by varying the training set size"""
     np.random.seed(seed)
+
+    # security cast to numpy arrays in case they are not
+    X_train = np.asarray(X_train)
+    y_train = np.asarray(y_train)
+    X_test = np.asarray(X_test)
+    y_test = np.asarray(y_test)
+
     results = []
 
     for n_per_class in fewshot_sizes:
@@ -96,7 +103,7 @@ def run_fewshot_analysis(X_train, y_train, X_test, y_test, class_names, full_acc
             X_sub_s = sc.fit_transform(X_sub)
             X_test_s = sc.transform(X_test)
 
-            svm = SVC(kernel='linear', C=1.0, random_state=seed + run)
+            svm = SVC(kernel='linear', C=C, random_state=seed + run)
             svm.fit(X_sub_s, y_sub)
             preds = svm.predict(X_test_s)
 
@@ -157,8 +164,8 @@ def plot_fewshot_results(fewshot_df, model_name="Model", save_path=None):
 
 def evaluate_and_save_all(
     y_true, y_pred, class_names, utils_dir, model_dir, model_name="resnet50_svm",
-    X_train_feats=None, y_train_labels=None, X_test_feats=None, 
-    artifacts_to_save=None, torch_model_to_save=None, seed=42
+    X_train_feats=None, y_train_labels=None, X_test_feats=None, C=1.0,
+    artifacts_to_save=None, torch_model_to_save=None, seed=33
 ):
     """
     Orchestrator function:
@@ -207,13 +214,19 @@ def evaluate_and_save_all(
         print("\nRunning few-shot experiments...")
         fewshot_df = run_fewshot_analysis(
             X_train_feats, y_train_labels, X_test_feats, y_true, 
-            class_names, acc, macro_f1, seed=seed
+            class_names, acc, macro_f1, C=C, seed=seed
         )
         plot_fewshot_results(
             fewshot_df, model_name=model_name, 
             save_path=utils_dir / f"fewshot_{model_name}.png"
         )
-        fewshot_data = fewshot_df.to_dict('records')
+
+        # Convert few-shot results to a list of dictionaries for JSON serialization
+        fewshot_data = [
+            {k: float(v) if isinstance(v, (np.floating, float)) else int(v) for k, v in row.items()}
+            for row in fewshot_df.to_dict('records')
+        ]
+
         print(fewshot_df.to_string(index=False))
 
     # saving JSON Files with Metrics

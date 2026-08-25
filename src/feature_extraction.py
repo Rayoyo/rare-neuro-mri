@@ -1,5 +1,7 @@
 '''Feature extraction utilities for extracting features from MRI images using a pre-trained ResNet-50 model'''
 
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -42,7 +44,12 @@ def extract_features(model, dataset, device, batch_size=64, desc="Extracting Fea
 
 def save_features(output_dir, features_dict):
     """Save the .npy files in the specified directory"""
+    output_dir = Path(output_dir)         # path conversion to avoid issues with string paths
     output_dir.mkdir(parents=True, exist_ok=True)
+    
     for name, array in features_dict.items():
-        np.save(output_dir / name, array)
-    print(f"\n✅ All features have been saved in: {output_dir}")
+        # add .npy extension if not present
+        filename = name if name.endswith('.npy') else f"{name}.npy"
+        np.save(output_dir / filename, array)
+        
+    print(f"\n✅ All features have been saved in: {output_dir.resolve()}")

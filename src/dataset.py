@@ -163,9 +163,9 @@ def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor
     train_transform = TorchIOMRITransform(img_size=img_size, is_train=True)
     val_test_transform = TorchIOMRITransform(img_size=img_size, is_train=False)
 
-    train_ds = MRIDataset(dataset_root, 'train', train_transform, augmentation_factor=aug_factor)
-    val_ds = MRIDataset(dataset_root, 'val', val_test_transform, augmentation_factor=1)
-    test_ds = MRIDataset(dataset_root, 'test', val_test_transform, augmentation_factor=1)
+    train_ds = MRIDataset(root, 'train', train_transform, augmentation_factor=aug_factor)
+    val_ds = MRIDataset(root, 'val', val_test_transform, augmentation_factor=1)
+    test_ds = MRIDataset(root, 'test', val_test_transform, augmentation_factor=1)
 
     return train_ds, val_ds, test_ds
 
