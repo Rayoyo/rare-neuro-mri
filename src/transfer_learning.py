@@ -12,13 +12,7 @@ from tqdm import tqdm
 def get_convnext_tiny_model(num_classes=5, freeze_backbone=False, unfreeze_last_stage=True, device='cuda'):
     """
     Initializes ConvNeXt-Tiny pre-trained on ImageNet and replaces the classification head with a 
-    new linear layer for the specified number of classes. Optionally freezes the backbone for light fine-tuning
-    
-    Args:
-        num_classes (int): Number of target classes (default: 5)
-        freeze_backbone (bool): If True, freeze all parameters of the backbone
-        unfreeze_last_stage (bool): If True (and freeze_backbone=True), unfreeze the last convolutional stage for light fine-tuning
-        device (str/torch.device): Device on which to load the model
+    new linear layer for the specified number of classes. Optionally freezes the backbone for light fine-tuning.
     """
     weights = ConvNeXt_Tiny_Weights.IMAGENET1K_V1
     model = convnext_tiny(weights=weights)
@@ -28,7 +22,11 @@ def get_convnext_tiny_model(num_classes=5, freeze_backbone=False, unfreeze_last_
         for param in model.features.parameters():
             param.requires_grad = False
             
-        # If requested, unfreeze the last stage (Stage 3 of ConvNeXt)
+        # Freeze also the LayerNorm inside the classifier head (index 0)
+        for param in model.classifier[0].parameters():
+            param.requires_grad = False
+
+        # If requested, unfreeze the last stage (Stage 3/4 of ConvNeXt)
         if unfreeze_last_stage:
             for param in model.features[7].parameters():
                 param.requires_grad = True
@@ -39,8 +37,9 @@ def get_convnext_tiny_model(num_classes=5, freeze_backbone=False, unfreeze_last_
 
     return model.to(device)
 
+
 def train_one_epoch(model, dataloader, criterion, optimizer, device):
-    """execute one epoch of training"""
+    """Execute one epoch of training"""
     model.train()
     running_loss = 0.0
     correct = 0
@@ -57,7 +56,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
 
         running_loss += loss.item() * images.size(0)
         _, preds = torch.max(outputs, 1)
-        correct += torch.sum(preds == labels.data).item()
+        correct += torch.sum(preds == labels).item()
         total += labels.size(0)
 
     return running_loss / total, correct / total
@@ -80,7 +79,7 @@ def validate_epoch(model, dataloader, criterion, device):
 
             running_loss += loss.item() * images.size(0)
             _, preds = torch.max(outputs, 1)
-            correct += torch.sum(preds == labels.data).item()
+            correct += torch.sum(preds == labels).item()
             total += labels.size(0)
             
             all_preds.extend(preds.cpu().numpy())
@@ -89,27 +88,33 @@ def validate_epoch(model, dataloader, criterion, device):
     return running_loss / total, correct / total, np.array(all_labels), np.array(all_preds)
 
 
-def extract_features_from_finetuned(model, dataset, device, batch_size=32):
+def extract_features_from_finetuned(model, dataset, device, batch_size=32, num_workers=2):
     """
     Extract features (768-D) from the fine-tuned ConvNeXt model by temporarily removing 
-    the final linear layer of the classifier
+    the final linear layer of the classifier. Safe state restoration guaranteed via try/finally
     """
+    model = model.to(device)
     model.eval()
-    # Save the original linear layer
+
+    # Save original linear layer
     original_fc = model.classifier[2]
-    model.classifier[2] = nn.Identity()
 
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-    all_features, all_labels = [], []
+    try:
+        # Temporarily replace final Linear with Identity
+        model.classifier[2] = nn.Identity()
 
-    with torch.no_grad():
-        for images, labels, _ in tqdm(loader, desc="Extracting Fine-Tuned Features"):
-            images = images.to(device)
-            features = model(images)
-            all_features.append(features.cpu().numpy())
-            all_labels.extend(labels.numpy())
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        all_features, all_labels = [], []
 
-    # Restore the original classifier
-    model.classifier[2] = original_fc
+        with torch.no_grad():
+            for images, labels, _ in tqdm(loader, desc="Extracting Fine-Tuned Features"):
+                images = images.to(device)
+                features = model(images)
+                all_features.append(features.cpu().numpy())
+                all_labels.extend(labels.numpy())
 
-    return np.vstack(all_features), np.array(all_labels)
+        return np.vstack(all_features), np.array(all_labels)
+
+    finally:
+        # Guarantee restoration of the original classifier even if interrupted
+        model.classifier[2] = original_fc
