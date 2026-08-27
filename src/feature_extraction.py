@@ -26,14 +26,14 @@ def get_resnet50_extractor(device):
 
 def extract_features(model, dataset, device, batch_size=64, desc="Extracting Features"):
     """
-    Extract features from a given dataset using the specified model.
+    Extract features from a given dataset using the specified model
 
-    IMPORTANT: `dataset` must use the deterministic inference transform
-    (`build_eval_dataset` / `return_train_eval=True`)
+    `dataset` must use the deterministic inference transform (`build_eval_dataset` / `return_train_eval=True`)
     Feeding the augmented training dataset produces random, duplicated features and silently corrupts every downstream
     result, from the SVM fit to the few-shot curve
     """
     if getattr(dataset, 'augmentation_factor', 1) > 1:
+        # avoid silent corruption of the few-shot curve: a subset of n indices could contain the same image twice
         raise ValueError(
             "extract_features received a dataset with augmentation_factor="
             f"{dataset.augmentation_factor}: features would be duplicated. "
@@ -71,8 +71,8 @@ def tune_svm_C(X_train, y_train, X_val, y_val, C_values=(0.01, 0.1, 1, 10, 100),
     """
     Grid search over the SVM regularization parameter, selected on the VALIDATION set
 
-    Ties are broken in favour of the smallest C (strict `>`), i.e. the widest margin
-    among equally-performing models
+    Ties are broken in favour of the smallest C (strict `>`), 
+    i.e. the widest margin among equally-performing models
     """
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
@@ -117,13 +117,12 @@ def train_svm_classifier(
     2. Refit on Train+Val with `probability=True`
     3. Evaluate ONCE on the held-out test set
 
-    `probability=True` is mandatory here, not cosmetic: without it `SVC` exposes no
-    `predict_proba`, and the API cannot return the probability distribution over the five
-    classes. It costs an internal 5-fold Platt calibration at fit time
+    `probability=True` is mandatory here, not cosmetic: 
+    without it `SVC` exposes no `predict_proba`, and the API cannot return the probability distribution over the five classes
+    It costs an internal 5-fold Platt calibration at fit time
 
-    `class_names` is stored in the artifacts because the SVM only ever sees integer
-    labels. Losing the mapping produces an API that predicts correctly but reports
-    permuted disease names: a silent, hard-to-notice failure
+    `class_names` is stored in the artifacts because the SVM only ever sees integer labels
+    Losing the mapping produces an API that predicts correctly but reports permuted disease names: a silent failure
 
     Returns
     -------
@@ -141,7 +140,7 @@ def train_svm_classifier(
     else:
         X_fit, y_fit = X_train, y_train
 
-    # A NEW scaler is fitted because the training distribution changed;
+    # A NEW scaler is fitted because the training distribution changed
     # the test set is only transformed, never fitted
     scaler = StandardScaler()
     X_fit_s = scaler.fit_transform(X_fit)

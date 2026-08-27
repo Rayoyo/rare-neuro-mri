@@ -1,6 +1,6 @@
 '''File for data modeling
-Manages data augmentation via TorchIO, PyTorch dataset creation for 2D MRI images,
-split verification and stratified few-shot subsampling
+Manages data augmentation via TorchIO, PyTorch dataset creation for 2D MRI images, split verification 
+and stratified few-shot subsampling 
 '''
 
 import os
@@ -52,18 +52,18 @@ def set_seed(seed=33):
 def verify_dataset_structure(dataset_root=None, expected_splits=SPLITS, verbose=True):
     """
     Verify that the Kaggle dataset is laid out as <root>/<split>/<class>/<image>.jpg
-    and that every split exposes exactly the same class folders.
+    and that every split exposes exactly the same class folders
 
-    The Kaggle archive already ships the 70/15/15 split, so no re-splitting script is
-    needed: what IS needed is a guarantee that the class ordering is identical across
-    splits. `MRIDataset` assigns integer labels via sorted(folder_names) independently
-    for each split, so a class missing from one split would silently shift every label
-    after it -> the model would train and evaluate against permuted targets
+    The Kaggle archive already ships the 70/15/15 split, so no re-splitting script is needed: 
+    what IS needed is a guarantee that the class ordering is identical across splits. 
+    `MRIDataset` assigns integer labels via sorted(folder_names) independently for each split, 
+    so a class missing from one split would silently shift every label after it 
+    -> the model would train and evaluate against permuted targets
 
     Returns
     -------
     classes : list[str]
-        The canonical, sorted class list shared by all splits.
+        The canonical, sorted class list shared by all splits
     counts : dict[str, dict[str, int]]
         Number of images per split and class
     """
@@ -278,14 +278,15 @@ def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor
     Parameters
     ----------
     return_train_eval : bool
-        When True a fourth dataset is returned: the SAME training images but with the
-        deterministic val/test transform and augmentation_factor=1
+        When True a fourth dataset is returned: 
+        the SAME training images but with the deterministic val/test transform and augmentation_factor=1
 
-        This is required for classical Feature Extraction. Passing the augmented
-        `train_ds` to `extract_features` yields features that are (a) random, because a
-        different TorchIO draw is applied at every call, and (b) duplicated, because
-        aug_factor=2 repeats every image. It also inflates the few-shot curve, since the
-        real number of distinct images per class becomes half of `n_per_class`
+        This is required for classical Feature Extraction
+        Passing the augmented `train_ds` to `extract_features` yields features that are 
+        (a) random, because a different TorchIO draw is applied at every call, and 
+        (b) duplicated, 
+        because aug_factor=2 repeats every image
+        It also inflates the few-shot curve, since the real number of distinct images per class becomes half of `n_per_class`
 
     Returns
     -------
@@ -325,8 +326,8 @@ def build_eval_dataset(dataset_root=None, split='train', img_size=224, classes=N
 def build_fewshot_train_dataset(dataset_root=None, img_size=224, classes=None):
     """
     Training split with augmentation ON but augmentation_factor=1, so that each physical
-    image appears exactly once. Required to draw honest few-shot subsets: with
-    aug_factor=2 a subset of n indices could contain the same image twice
+    image appears exactly once. Required to draw honest few-shot subsets: 
+    with aug_factor=2 a subset of n indices could contain the same image twice
     """
     root = dataset_root if dataset_root is not None else DEFAULT_DATASET_ROOT
     return MRIDataset(root, 'train', TorchIOMRITransform(img_size=img_size, is_train=True),
@@ -339,8 +340,8 @@ def make_fewshot_subset(dataset, n_per_class, seed=33, strict=False):
 
     If a class holds fewer images than requested, the subset is capped at the smallest
     available class and a warning is emitted, instead of silently dropping that class:
-    dropping it would both unbalance the subset and remove a label from training, which
-    quietly changes the task being measured
+    dropping it would both unbalance the subset and remove a label from training, 
+    which quietly changes the task being measured
 
     Returns
     -------
