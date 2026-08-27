@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rare-neuro-mri-api:1.0.0
+    container_name: rare-neuro-mri-api
+    ports:
+      - "8000:8000"
+    environment:
+      # convnext (best test accuracy, Grad-CAM available) or resnet_svm
+      MODEL_BACKEND: ${MODEL_BACKEND:-convnext}
+      MODEL_DIR: /app/models
+      DEVICE: cpu
+      IMG_SIZE: 224
+      MAX_UPLOAD_MB: 15
+    volumes:
+      # Trained artifacts stay outside the image: retraining does not force a rebuild.
+      # Read-only, because the API must never write into the model store.
+      - ./models:/app/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s

@@ -12,7 +12,7 @@ tqdm>=4.65.0
 # --- Data augmentation MRI ---
 # imported by src/dataset.py: without these the package is not installable as-is
 torchio>=0.19.0
-SimpleITK>=2.3.0   # backend I/O required from TorchIO
+SimpleITK>=2.3.0      # backend I/O required by TorchIO
 
 # --- Dataset download ---
 kaggle>=1.6.0         # used by the notebooks to pull the curated dataset
@@ -26,5 +26,5 @@ python-multipart>=0.0.9
 # --- Utilities ---
 requests>=2.31.0
 
-# Grad-CAM  implemented directly in API_App/gradcam.py with forward/backward hooks 
-# no extra explainability dependency is required
+# Note: Grad-CAM is implemented directly in API_App/gradcam.py with forward/backward
+# hooks, so no extra explainability dependency is required.
