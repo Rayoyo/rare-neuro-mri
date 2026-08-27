@@ -91,16 +91,16 @@ From the folder University -> rare-neuro-mri
 rare-neuro-mri/
 ├── data/                                          # dataset downloaded from kaggle
 │   └── rare_neuro_mri_curated            
-│   │   ├── test      
+│   │   ├── test                                   # 280 images each
 │   │   |   ├── fukuyama_muscular_dystrophy        # contains the images relative to that disease
 │   │   |   ├── hallervorden_spatz_disease 
 │   │   |   ├── moyamoya_disease 
 │   │   |   ├── pachygyria_cerebellar_hypoplasia 
 │   │   |   └── walker_warburg_syndrome 
-│   │   ├── train                                  # folder similar to test   
-│   │   ├── val                                    # folder similar to test   
-│   │   ├── disease_summary.csv      
-│   │   └── metadata.csv        
+│   │   ├── train                                  # folder similar to test (with 60 images) 
+│   │   ├── val                                    # folder similar to test (with 60 images) 
+│   │   ├── disease_summary.csv                    # Disease information with clinical details and Orphadata references (5 rows)
+│   │   └── metadata.csv                           # complete information for each image (2000 rows)
 │
 ├── resnet models/                                 # resnet model
 │   ├── resnet50_svm_artifacts.pkl             
