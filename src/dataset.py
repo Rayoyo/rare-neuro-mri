@@ -313,16 +313,6 @@ def build_dataloaders(dataset_root=None, batch_size=64, img_size=224, aug_factor
     return train_ds, val_ds, test_ds, train_eval_ds
 
 
-def build_eval_dataset(dataset_root=None, split='train', img_size=224, classes=None):
-    """
-    Single split with deterministic preprocessing and no duplication
-    Use this whenever features are extracted or a model is evaluated
-    """
-    root = dataset_root if dataset_root is not None else DEFAULT_DATASET_ROOT
-    return MRIDataset(root, split, build_inference_transform(img_size=img_size),
-                      augmentation_factor=1, classes=classes)
-
-
 def build_fewshot_train_dataset(dataset_root=None, img_size=224, classes=None):
     """
     Training split with augmentation ON but augmentation_factor=1, so that each physical

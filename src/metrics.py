@@ -14,7 +14,7 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-# confusion matrix 
+# confusion matrix - plot & save
 def plot_confusion_matrix(y_true, y_pred, class_names, save_path=None, title="Confusion Matrix"):
     """Generate and save the confusion matrix heatmap using Seaborn"""
     cm = confusion_matrix(y_true, y_pred)
@@ -37,7 +37,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names, save_path=None, title="Co
     plt.show()
     plt.close()
 
-# per-class metrics plots
+# per-class metrics plots - precision, recall, f1-score (plot & save histogram)
 def plot_per_class_metrics(y_true, y_pred, class_names, save_path=None, title="Per-Class Metrics"):
     """Generate and save the bar chart showing Precision, Recall, and F1-Score per class"""
     precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average=None)
@@ -72,7 +72,7 @@ def plot_per_class_metrics(y_true, y_pred, class_names, save_path=None, title="P
     plt.show()
     plt.close()
 
-# Few-shot analysis
+# Few-shot analysis (resnet + SVM) - run and plot
 def run_fewshot_analysis(X_train, y_train, X_test, y_test, class_names, full_acc, full_f1, 
                          fewshot_sizes=[10, 25, 50, 100, 200], n_runs=5, C=1.0, seed=33):
     """Generate and save the few-shot robustness analysis by varying the training set size"""
@@ -131,7 +131,7 @@ def run_fewshot_analysis(X_train, y_train, X_test, y_test, class_names, full_acc
     fewshot_df = pd.concat([fewshot_df, full_row], ignore_index=True)
     return fewshot_df
 
-# plotting function for few-shot results
+# plotting function for few-shot results - accuracy and macro-f1 vs training set size (robustness of the model) - plot & save
 def plot_fewshot_results(fewshot_df, model_name="Model", save_path=None):
     """Generate and save the plots for Accuracy and Macro-F1 as a function of the number of samples per class"""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
