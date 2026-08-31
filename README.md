@@ -121,7 +121,7 @@ rare-neuro-mri-classification/
 ### Option A — pull the published image (nothing to build)
 
 ```bash
-docker run -d -p 8000:8000 --name rare-neuro-mri-api ghcr.io/rayuser/rare-neuro-mri-api:2.0.0
+docker run -d -p 8000:8000 --name rare-neuro-mri-api ghcr.io/rayoyo/rare-neuro-mri-api:latest
 ```
 
 The image is self-contained: the trained model is baked in.
