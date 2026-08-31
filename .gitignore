@@ -1,7 +1,5 @@
+/data
 models/resnet/y_val.npy
 /models
 /API_App/models
-utils/api_test_images-5296/manifest.csv
-utils/api_test_images-5296/099_moyamoya_disease.jpg
-utils/api_test_images-5296/099_hallervorden_spatz_disease.jpg
 *.jpg
