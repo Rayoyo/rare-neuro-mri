@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rare Neurological Diseases — MRI Classifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #12171c;
+    --panel: #1a2128;
+    --panel-2: #141a20;
+    --line: #2a343e;
+    --ink: #d7dee5;
+    --ink-dim: #8a97a3;
+    --ink-faint: #5d6b78;
+    --accent: #4fb3a0;
+    --warn: #d9a441;
+    --danger: #d16d6d;
+    --c0: #5b8ff9;
+    --c1: #e8a33d;
+    --c2: #4fb3a0;
+    --c3: #c96c8e;
+    --c4: #9b8ae6;
+    --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body {
+    background: #161a1e;
+    color: #10ab9d;
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    display: flex;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+/* ---------- sidebar ---------- */
+.rail{
+  width:236px; flex:0 0 236px; background:var(--panel-2);
+  border-right:1px solid var(--line); display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh;
+}
+.brand{padding:22px 20px 18px; border-bottom:1px solid var(--line)}
+.brand h1{margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; line-height:1.3}
+.brand p{margin:5px 0 0; font-size:12.5px; color:var(--ink-faint)}
+.nav{padding:12px 10px; flex:1}
+.nav button{
+  display:flex; align-items:center; gap:11px; width:100%; padding:9px 11px;
+  margin-bottom:2px; background:none; border:0; border-radius:6px;
+  color:var(--ink-dim); font:inherit; font-size:14px; text-align:left; cursor:pointer;
+}
+.nav button:hover{background:#1e262e; color:var(--ink)}
+.nav button[aria-current="page"]{background:#1e262e; color:var(--ink); font-weight:500}
+.nav button[aria-current="page"] .dot{background:var(--accent)}
+.dot{width:5px; height:5px; border-radius:50%; background:var(--ink-faint); flex:0 0 5px}
+.rail footer{padding:14px 20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint)}
+.status{display:flex; align-items:center; gap:8px}
+.status .led{width:7px;height:7px;border-radius:50%;background:var(--ink-faint)}
+.status.up .led{background:var(--accent)}
+.status.down .led{background:var(--danger)}
+/* ---------- main ---------- */
+main{flex:1; padding:34px 40px 60px; max-width:1180px}
+.view{display:none}
+.view.on{display:block}
+h2{margin:0 0 6px; font-size:30px; font-weight:600; letter-spacing:-.02em}
+.lede{margin:0 0 26px; color:var(--ink-dim); max-width:62ch}
+h3{margin:0 0 12px; font-size:14px; font-weight:600; color:var(--ink)}
+/* ---------- upload ---------- */
+.drop{
+  border:1px dashed var(--line); border-radius:10px; padding:26px;
+  text-align:center; color:var(--ink-dim); cursor:pointer; background:var(--panel-2);
+}
+.drop:hover,.drop.over{border-color:var(--accent); color:var(--ink)}
+.drop strong{color:var(--ink); font-weight:500}
+.drop input{display:none}
+.controls{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:25px; margin-bottom: 25px;}
+button.go{
+  background:var(--accent); color:#0d1417; border:0; border-radius:7px;
+  padding:10px 18px; font:inherit; font-weight:600; cursor:pointer;
+}
+button.go:hover{filter:brightness(1.08)}
+button.go:disabled{opacity:.4; cursor:not-allowed; filter:none}
+select,input[type=range]{
+  background:var(--panel); color:var(--ink); border:1px solid var(--line);
+  border-radius:6px; padding:8px 10px; font:inherit; font-size:14px;
+}
+label.field{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-dim)}
+/* ---------- results ---------- */
+.split{display:grid; grid-template-columns:minmax(0,380px) minmax(0,1fr); gap:26px; margin-top:26px}
+.viewport {
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.viewport img{width:100%; height:100%; object-fit:contain}
+.viewport span{color:var(--ink-faint); font-size:13px}
+.viewport img:not([src]),.viewport img[src=""] {display: none;}
+.viewport:has(img:not([src]))::after, .viewport:has(img[src=""])::after {
+    content: "No image loaded yet \APlease choose an image";
+    white-space: pre-line;
+    color: #0a7b71;
+    font-size: 25px;
+    text-align: center;
+}
+.verdict{border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:20px}
+.verdict .name{font-size:21px; font-weight:600; letter-spacing:-.01em; margin:0}
+.verdict .orpha{font-family:var(--mono); font-size:12.5px; color:var(--ink-dim); margin:3px 0 0}
+.decision{
+  display:flex; align-items:baseline; gap:10px; margin:18px 0 4px;
+  padding:11px 13px; border-radius:7px; border-left:3px solid var(--accent); background:#18242440;
+}
+.decision.reject{border-left-color:var(--warn); background:#2a221240}
+.decision .big{font-family:var(--mono); font-size:20px; font-weight:500}
+.decision .lbl{font-size:13px; color:var(--ink-dim)}
+.note{font-size:13px; color:var(--ink-dim); margin:10px 0 0; line-height:1.5}
+.note.warn{color:var(--warn)}
+/* signature: five-segment distribution band */
+.band{display:flex; height:9px; border-radius:5px; overflow:hidden; margin:22px 0 14px; background:var(--panel-2)}
+.band i{display:block; height:100%; transition:width .45s cubic-bezier(.2,.7,.3,1)}
+.rows{list-style:none; margin:0; padding:0}
+.rows li{display:grid; grid-template-columns:9px 1fr auto; gap:11px; align-items:center; padding:6px 0}
+.rows .swatch{width:9px;height:9px;border-radius:2px}
+.rows .cls{font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rows .pct{font-family:var(--mono); font-size:13px; color:var(--ink-dim)}
+.rows li.top .cls{color:var(--ink); font-weight:500}
+.rows li.top .pct{color:var(--ink)}
+/* ---------- tables / info ---------- */
+table{border-collapse:collapse; width:100%; font-size:14px}
+th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line)}
+th{color:var(--ink-dim); font-weight:500; font-size:13px}
+td.num{font-family:var(--mono); color:var(--ink-dim)}
+.pair{display:grid; grid-template-columns:200px 1fr; gap:2px 18px; font-size:14px}
+.pair dt{color:var(--ink-dim); padding:7px 0}
+.pair dd{margin:0; padding:7px 0; font-family:var(--mono); font-size:13.5px}
+.prose{max-width:66ch; color:var(--ink-dim)}
+.prose p{margin:0 0 14px}
+.prose strong{color:var(--ink); font-weight:600}
+.prose code{font-family:var(--mono); font-size:12.5px; background:var(--panel); padding:2px 6px; border-radius:4px; color:var(--ink)}
+.disclaimer{border-left:3px solid var(--warn); padding:12px 16px; background:#2a221230; border-radius:0 7px 7px 0; margin-top:26px}
+.disclaimer p{margin:0; color:var(--ink); font-size:13.5px}
+.err{border-left:3px solid var(--danger); background:#2a161630; padding:12px 16px; border-radius:0 7px 7px 0; margin-top:18px; font-size:13.5px}
+.cam{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:26px}
+.cam figure{margin:0}
+.cam figcaption{font-size:12.5px; color:var(--ink-dim); margin-top:8px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:860px){
+  body{flex-direction:column}
+  .rail{width:100%; flex:none; height:auto; position:static; flex-direction:row; align-items:center; overflow-x:auto}
+  .brand{border:0; padding:14px 16px} .brand p{display:none}
+  .nav{display:flex; padding:8px} .nav button{width:auto; white-space:nowrap}
+  .rail footer{border:0; margin-left:auto}
+  main{padding:24px 18px 48px}
+  .split,.cam{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="rail">
+  <div class="brand">
+    <h1>Rare neurological diseases</h1>
+    <p>MRI images classifier</p>
+  </div>
+  <div class="nav" id="nav">
+    <button data-view="predict" aria-current="page"><span class="dot"></span>Classify an MRI image</button>
+    <button data-view="cam"><span class="dot"></span>Explain a prediction</button>
+    <button data-view="model"><span class="dot"></span>Model</button>
+    <button data-view="classes"><span class="dot"></span>Conditions</button>
+    <button data-view="about"><span class="dot"></span>About</button>
+  </div>
+  <footer><div class="status" id="status"><span class="led"></span><span id="statusText">Connecting</span></div></footer>
+</nav>
+
+<main>
+  <!-- PREDICT -->
+  <section class="view on" id="v-predict">
+    <h2>Classify an MRI image</h2>
+    <p class="lede">Upload an axial brain MRI image. The model returns one of five rare conditions, its
+       confidence, and the full probability distribution.</p>
+
+    <label class="drop" id="drop1">
+      <input type="file" id="file1" accept="image/*">
+      <strong>Load an image</strong> or drag one here — JPG or PNG
+    </label>
+    <div class="controls">
+      <button class="go" id="run1" disabled>Classify MRI</button>
+      <span class="pct" id="name1" style="color:var(--ink-faint);font-size:13px"></span>
+    </div>
+    <div id="err1"></div>
+
+    <div class="split" id="out1" hidden>
+      <div class="viewport"><img id="img1" alt="Uploaded MRI image"></div>
+      <div class="verdict">
+        <p class="name" id="pname"></p>
+        <p class="orpha" id="porpha"></p>
+        <div class="decision" id="pdec">
+          <span class="big" id="pconf"></span>
+          <span class="lbl" id="pdeclbl"></span>
+        </div>
+        <p class="note" id="pnote"></p>
+        <div class="band" id="pband"></div>
+        <ul class="rows" id="prows"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- GRAD-CAM -->
+  <section class="view" id="v-cam">
+    <h2>Explain a prediction</h2>
+    <p class="lede">Grad-CAM highlights the regions that most influenced the score for a class. Warm areas
+       contributed most.</p>
+
+    <label class="drop" id="drop2">
+      <input type="file" id="file2" accept="image/*">
+      <strong>Load an image</strong> or drag one here — JPG or PNG
+    </label>
+    <div class="controls">
+      <button class="go" id="run2" disabled>Generate heatmap</button>
+      <label class="field">Explain
+        <select id="target"><option value="">the predicted class</option></select>
+      </label>
+      <label class="field">Overlay
+        <input type="range" id="alpha" min="0.2" max="0.8" step="0.05" value="0.5" style="width:110px">
+        <span class="pct" id="alphaVal" style="font-family:var(--mono);font-size:13px">0.50</span>
+      </label>
+    </div>
+    <div id="err2"></div>
+
+    <div class="cam" id="out2" hidden>
+      <figure><div class="viewport"><img id="img2" alt="Uploaded MRI image"></div>
+        <figcaption>Input image</figcaption></figure>
+      <figure><div class="viewport"><img id="img2cam" alt="Grad-CAM heatmap over the image"></div>
+        <figcaption id="cap2">Grad-CAM</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- MODEL -->
+  <section class="view" id="v-model">
+    <h2>Model</h2>
+    <p class="lede">Values reported by the service at startup, read from the artifacts produced during
+       training.</p>
+    <dl class="pair" id="modelInfo"></dl>
+    <div class="prose" style="margin-top:26px">
+      <p><strong>Expected Calibration Error</strong> measures how far the reported confidence sits from
+      the observed accuracy. Below roughly 0.02 the probabilities can be read at face value.</p>
+      <p>The <strong>confidence threshold</strong> is the 5th percentile of the confidences measured on
+      the validation set: it declines about 5&nbsp;% of genuine inputs by construction, which is the cost
+      of being able to refuse an image that is not one of the five conditions.</p>
+    </div>
+  </section>
+
+  <!-- CLASSES -->
+<section class="view" id="v-classes">
+  <h2>Conditions</h2>
+  <p class="lede">The five classes the model was trained on, in the order it predicts them.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px"></th>
+        <th style="width:230px">Condition</th>
+        <th style="width:120px">ORPHA code</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3b82f6;"></span></td>
+        <td><strong>Fukuyama Muscular Dystrophy</strong></td>
+        <td><code>ORPHA:272</code></td>
+        <td style="color:var(--ink-dim); font-size:13px;">Congenital muscular dystrophy with severe cortical brain malformations (cobblestone lissencephaly).</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;"></span></td>
+        <td><strong>Hallervorden Spatz Disease</strong></td>
+        <td><code>ORPHA:157850</code></td>
+        <td style="color:var(--ink-dim); font-size:13px;">Neurodegenerative movement disorder characterized by progressive iron accumulation in the basal ganglia (PKAN).</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;"></span></td>
+        <td><strong>Moyamoya Disease</strong></td>
+        <td><code>ORPHA:2573</code></td>
+        <td style="color:var(--ink-dim); font-size:13px;">Progressive cerebrovascular disorder with internal carotid artery stenosis and collateral blood vessel formation.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ec4899;"></span></td>
+        <td><strong>Pachygyria Cerebellar Hypoplasia</strong></td>
+        <td><code>ORPHA:2524</code></td>
+        <td style="color:var(--ink-dim); font-size:13px;">Malformation of cortical development with abnormally thick gyri paired with cerebellar underdevelopment.</td>
+      </tr>
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#8b5cf6;"></span></td>
+        <td><strong>Walker Warburg Syndrome</strong></td>
+        <td><code>ORPHA:899</code></td>
+        <td style="color:var(--ink-dim); font-size:13px;">Severe congenital muscular dystrophy with complex structural brain and eye abnormalities.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:18px">
+    Walker-Warburg syndrome and Fukuyama muscular dystrophy are both congenital muscular dystrophies with overlapping MRI appearance, so confusion between them is clinically plausible.
+  </p>
+</section>
+
+  <!-- ABOUT -->
+  <section class="view" id="v-about">
+    <h2>About</h2>
+    <div class="prose">
+      <p>This service classifies a single axial brain MRI image into one of five rare neurological
+      conditions. It runs a ConvNeXt-Tiny network, pre-trained on ImageNet and fine-tuned on 1&nbsp;400
+      curated images.</p>
+      <p>The model has exactly five outputs and always returns one of them, so an image that is not one
+      of these conditions would still receive a confident-looking answer. To limit that, predictions
+      whose confidence falls below the threshold are marked <strong>outside the training
+      distribution</strong> and should be ignored.</p>
+      <p>The interface calls the same public endpoints available to any client:
+      <code>/predict</code>, <code>/gradcam</code>, <code>/model-info</code>, <code>/classes</code> and
+      <code>/health</code>. Full interactive documentation is at
+      <a href="/docs">/docs</a>, and the OpenAPI schema at <a href="/openapi.json">/openapi.json</a>.</p>
+      <div class="disclaimer"><p>Research demonstrator trained on a SMALL curated dataset.
+        Not a medical device; not for diagnostic use.</p></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const CLASS_COLORS = ['var(--c0)','var(--c1)','var(--c2)','var(--c3)','var(--c4)'];
+let CLASSES = [];
+const $ = s => document.querySelector(s);
+const pct = v => (v*100).toFixed(2) + '%';
+const pretty = s => s.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+
+/* ---- navigation ---- */
+$('#nav').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#nav button').forEach(x => x.removeAttribute('aria-current'));
+  b.setAttribute('aria-current','page');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+  $('#v-' + b.dataset.view).classList.add('on');
+  window.scrollTo({top:0});
+});
+
+/* ---- upload wiring, shared by both views ---- */
+function wireUpload(dropSel, fileSel, runSel, nameSel, onPick){
+  const drop = $(dropSel), file = $(fileSel), run = $(runSel);
+  const take = f => {
+    if (!f) return;
+    run.disabled = false;
+    if (nameSel) $(nameSel).textContent = f.name;
+    onPick(f);
+  };
+  file.addEventListener('change', () => take(file.files[0]));
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('over');
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('over');
+  }));
+  drop.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) { file.files = e.dataTransfer.files; take(f); }
+  });
+}
+
+function showError(sel, msg){ $(sel).innerHTML = '<div class="err">' + msg + '</div>'; }
+function clearError(sel){ $(sel).innerHTML = ''; }
+
+/* ---- predict ---- */
+let file1 = null;
+wireUpload('#drop1','#file1','#run1','#name1', f => {
+  file1 = f; $('#img1').src = URL.createObjectURL(f);
+  $('#out1').hidden = true; clearError('#err1');
+});
+
+$('#run1').addEventListener('click', async () => {
+  const btn = $('#run1'); btn.disabled = true; btn.textContent = 'Classifying…'; clearError('#err1');
+  try{
+    const fd = new FormData(); fd.append('file', file1);
+    const r = await fetch('/predict', {method:'POST', body:fd});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || ('Request failed with status ' + r.status));
+    renderPrediction(d);
+    $('#out1').hidden = false;
+  }catch(e){
+    showError('#err1', 'Could not classify this image. ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Classify MRI';
+  }
+});
+
+function renderPrediction(d){
+  $('#pname').textContent = pretty(d.predicted_class);
+  $('#porpha').textContent = d.orpha_code || '';
+
+  const dec = $('#pdec');
+  dec.classList.toggle('reject', !d.in_distribution);
+  $('#pconf').textContent = pct(d.confidence);
+  $('#pdeclbl').textContent = d.in_distribution
+    ? 'confidence — within the training distribution'
+    : 'confidence — below the threshold of ' + pct(d.confidence_threshold);
+
+  const note = $('#pnote');
+  note.className = 'note' + (d.in_distribution ? '' : ' warn');
+  note.textContent = d.in_distribution
+    ? 'The MRI image resembles the data the model was trained on, so the distribution below can be read as a prediction.'
+    : (d.warning || 'This image does not resemble the training data; the prediction is not meaningful.');
+
+  const idx = c => Math.max(0, CLASSES.indexOf(c));
+  const band = $('#pband'); band.innerHTML = '';
+  const rows = $('#prows'); rows.innerHTML = '';
+  d.probabilities.forEach((p, i) => {
+    const col = CLASS_COLORS[idx(p.class_name) % 5];
+    const seg = document.createElement('i');
+    seg.style.background = col; seg.style.width = '0%';
+    band.appendChild(seg);
+    requestAnimationFrame(() => { seg.style.width = (p.probability*100) + '%'; });
+
+    const li = document.createElement('li');
+    if (i === 0) li.className = 'top';
+    li.innerHTML = '<span class="swatch" style="background:' + col + '"></span>' +
+                   '<span class="cls">' + pretty(p.class_name) + '</span>' +
+                   '<span class="pct">' + pct(p.probability) + '</span>';
+    rows.appendChild(li);
+  });
+}
+
+/* ---- grad-cam ---- */
+let file2 = null;
+wireUpload('#drop2','#file2','#run2', null, f => {
+  file2 = f; $('#img2').src = URL.createObjectURL(f);
+  $('#out2').hidden = true; clearError('#err2');
+});
+$('#alpha').addEventListener('input', e => { $('#alphaVal').textContent = (+e.target.value).toFixed(2); });
+
+$('#run2').addEventListener('click', async () => {
+  const btn = $('#run2'); btn.disabled = true; btn.textContent = 'Generating…'; clearError('#err2');
+  try{
+    const fd = new FormData(); fd.append('file', file2);
+    const q = new URLSearchParams({alpha: $('#alpha').value});
+    if ($('#target').value) q.set('target_class', $('#target').value);
+    const r = await fetch('/gradcam?' + q.toString(), {method:'POST', body:fd});
+    if (!r.ok){
+      let msg = 'status ' + r.status;
+      try { msg = (await r.json()).detail || msg; } catch(_){}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    $('#img2cam').src = URL.createObjectURL(blob);
+    const cls = r.headers.get('X-Explained-Class');
+    const conf = r.headers.get('X-Confidence');
+    $('#cap2').textContent = cls
+      ? 'Grad-CAM for ' + pretty(cls) + (conf ? ' — model confidence ' + pct(+conf) : '')
+      : 'Grad-CAM';
+    $('#out2').hidden = false;
+  }catch(e){
+    showError('#err2', 'Could not generate the heatmap. ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Generate heatmap';
+  }
+});
+
+/* ---- startup: health, model info, classes ---- */
+(async function init(){
+  try{
+    const h = await (await fetch('/health')).json();
+    const s = $('#status');
+    s.className = 'status ' + (h.status === 'ok' ? 'up' : 'down');
+    $('#statusText').textContent = h.status === 'ok' ? 'Service ready' : 'Model loading';
+  }catch(_){
+    $('#status').className = 'status down';
+    $('#statusText').textContent = 'Service unreachable';
+  }
+
+  try{
+    const m = await (await fetch('/model-info')).json();
+    CLASSES = m.classes || [];
+    const fmt = v => v === null || v === undefined ? '—' : v;
+    const fields = [
+      ['Architecture', m.model_architecture],
+      ['Running on', m.device],
+      ['Input size', m.img_size + ' × ' + m.img_size + ' px'],
+      ['Test accuracy', m.test_accuracy != null ? pct(m.test_accuracy) : '—'],
+      ['Calibration error (ECE)', m.ece != null ? m.ece.toFixed(4) : '—'],
+      ['Rejection', m.rejection_enabled ? 'enabled' : 'disabled'],
+      ['Confidence threshold', m.confidence_threshold != null ? pct(m.confidence_threshold) : '—'],
+      ['Classes', String((m.classes || []).length)]
+    ];
+    $('#modelInfo').innerHTML = fields
+      .map(([k,v]) => '<dt>' + k + '</dt><dd>' + fmt(v) + '</dd>').join('');
+  }catch(_){
+    $('#modelInfo').innerHTML = '<dt>Model</dt><dd>unavailable</dd>';
+  }
+
+  try{
+    const c = (await (await fetch('/classes')).json()).classes || [];
+    $('#classRows').innerHTML = c.map(x =>
+      '<tr><td><span class="swatch" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:'
+      + CLASS_COLORS[x.index % 5] + '"></span></td><td>' + pretty(x.class_name)
+      + '</td><td class="num">' + (x.orpha_code || '—') + '</td></tr>').join('');
+    $('#target').innerHTML = '<option value="">the predicted class</option>' +
+      c.map(x => '<option value="' + x.class_name + '">' + pretty(x.class_name) + '</option>').join('');
+  }catch(_){}
+})();
+</script>
+</body>
+</html>
