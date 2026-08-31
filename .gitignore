@@ -3,3 +3,4 @@ models/resnet/y_val.npy
 /models
 /API_App/models
 *.jpg
+utils/api_test_images-5296/manifest.csv
